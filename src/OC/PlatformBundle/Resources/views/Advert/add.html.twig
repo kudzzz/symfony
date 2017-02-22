@@ -1,0 +1,26 @@
+{# src/OC/PlatformBundle/Resources/views/Advert/add.html.twig #}
+
+{% extends "OCPlatformBundle::layout.html.twig" %}
+
+{% block body %}
+
+    {# On vérifie qu'une image soit bien associée à l'annonce #}
+    {% if advert.image is not null %}
+        <img src="{{ advert.image.url }}" alt="{{ advert.image.alt }}">
+    {% endif %}
+
+    <h2>{{ advert.title }}</h2>
+    <i>Par {{ advert.author }}, le {{ advert.date|date('d/m/Y') }}</i>
+
+    <div class="well">
+        {{ advert.content }}
+    </div>
+
+  {{ include("OCPlatformBundle:Advert:form.html.twig") }}
+
+  <p>
+    Attention : cette annonce sera ajoutée directement
+    sur la page d'accueil après validation du formulaire.
+  </p>
+
+{% endblock %}
