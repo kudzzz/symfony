@@ -24,36 +24,26 @@ class AdvertController extends Controller
       throw new NotFoundHttpException('Page "'.$page.'" inexistante.');
     }
 
-    // Ici, on récupérera la liste des annonces, puis on la passera au template
+      //$listAdverts = $this->getDoctrine()->getManager()->getRepository('OCPlatformBundle:Advert')->findAll();
 
-    // Mais pour l'instant, on ne fait qu'appeler le template
-	
-	$listAdverts = array(
-	  array(
-	    'id' => 1,
-		'title' => 'Developer Symfony2',
-		'author' => 'Alexandre',
-		'content' => 'nouveau developpeur pour Symfony2',
-		'date' => new \DateTime()
-	  ),
-	  array(
-	    'id' => 2,
-		'title' => 'Developer webmaster',
-		'author' => 'Alexandre',
-		'content' => 'nouveau developpeur pour webmaster',
-		'date' => new \DateTime()
-	  ),
-	  array(
-	    'id' => 3,
-		'title' => 'Developer webdesigner',
-		'author' => 'Alexandre',
-		'content' => 'nouveau developpeur pour webdesigner',
-		'date' => new \DateTime()
-	  ),
-	  
-	);
-	
-    return $this->render('OCPlatformBundle:Advert:index.html.twig', array('listAdverts' => $listAdverts));
+      $nbPerPage = 3;
+
+      $listAdverts = $this->getDoctrine()
+          ->getManager()
+          ->getRepository('OCPlatformBundle:Advert')
+          ->getAdverts($page, $nbPerPage);
+
+      $nbPages = ceil(count($listAdverts)/$nbPerPage);
+
+      if ($page > $nbPerPage){
+          throw $this->createNotFoundException("La page ".$page." n'existe pas");
+      }
+
+    return $this->render('OCPlatformBundle:Advert:index.html.twig', array(
+        'listAdverts' => $listAdverts,
+        'nbPages' => $nbPages,
+        'page' => $page
+    ));
   }
 
   public function viewAction($id)
@@ -90,61 +80,31 @@ class AdvertController extends Controller
 
   public function addAction(Request $request)
   {
-	  
-    /*$antispam = $this->container->get('oc_platform.antispam');
-    $text = '...';
-	if ($antispam->isSpam($text)){
-	  throw new \Exception('Votre message a ete detecte comme spam !');
-		
-	}*/
-      $em = $this->getDoctrine()->getManager();
-
       $advert = new Advert();
-      $advert->setTitle("Dev Symfony2");
-      $advert->setAuthor("Alex");
-      $advert->setContent("Symfony2 zzzz");
+      $form = $this->get('form.factory')->createBuilder('form', $advert)
+          ->add('date','date')
+          ->add('title','text')
+          ->add('content', 'textarea')
+          ->add('author', 'text')
+          ->add('published', 'checkbox', array('required' => false))
+          ->add('save', 'submit')
+          ->getForm();
 
-      $application1 = new Application();
-      $application1->setAuthor('Marine');
-      $application1->setContent("J'ai toutes les qualites requises.");
+      $form->handleRequest($request);
 
-      $application2 = new Application();
-      $application2->setAuthor('Pierre');
-      $application2->setContent("Je suis tres motive.");
+      if($form->isValid()){
+          $em = $this->getDoctrine()
+              ->getManager();
+          $em->persist($advert);
+          $em->flush();
+          $request->getSession()->getFlashBag()->add('notice', 'Annonce bien enregistree.');
 
-      $listSkills = $em->getRepository('OCPlatformBundle:Skill')->findAll();
-
-      foreach($listSkills as $skill){
-
-          $advertSkill = new AdvertSkill();
-
-          $advertSkill->setAdvert($advert);
-          $advertSkill->setSkill($skill);
-          $advertSkill->setLevel('Expert');
-
-          $em->persist($advertSkill);
+          return $this->redirect($this->generateUrl('oc_platform_view', array('id' => $advert->getId())));
       }
 
-      /*
-      $image = new Image();
-      $image->setUrl('http://sdz-upload.s3.amazonaws.com/prod/upload/job-de-reve.jpg');
-      $image->setAlt('Job de reve');
-
-      $advert->setImage($image);
-       */
-
-      $application1->setAdvert($advert);
-      $application2->setAdvert($advert);
-
-      $em->persist($advert);
-
-      $em->persist($application1);
-      $em->persist($application2);
-
-      $em->flush();
-
-
-      return $this->render('OCPlatformBundle:Advert:add.html.twig', array('advert' => $advert));
+      return $this->render('OCPlatformBundle:Advert:add.html.twig', array(
+          'form' => $form->createView()
+      ));
   }
 
   public function editAction($id, Request $request)
@@ -168,18 +128,10 @@ class AdvertController extends Controller
           throw new NotFoundHttpException("L'annonce d'id ".$id. " n'existe pas.");
       }
 
-      $listCategories = $em->getRepository('OCPlatformBundle:category')->findAll();
-
-      foreach ($listCategories as $category){
-          $advert->addCategory($category);
-      }
-
-      $em->flush();
-
 	return $this->render('OCPlatformBundle:Advert:edit.html.twig', array('advert' => $advert));
   }
 
-  public function deleteAction($id)
+  public function deleteAction($id, Request $request)
   {
       $em = $this->getDoctrine()->getManager();
 
@@ -189,20 +141,23 @@ class AdvertController extends Controller
           throw new NotFoundHttpException("L'annonce d'id ".$id." n'existe pas");
       }
 
-      foreach($advert->getCategories() as $category){
-          $advert->removeCategory($category);
+      if ($request->isMethod('POST')){
+          $request->getSession()->getFlashBag()->add('info', 'Annonce bien supprimee.');
+
+          return $this->redirect($this->generateUrl('oc_platform_view'));
       }
-      $em->flush();
 
     return $this->render('OCPlatformBundle:Advert:delete.html.twig', array('advert' => $advert));
   }
   
-  public function menuAction(){
-	  $listAdverts = array(
-		array('id' => 2, 'title' => 'Dev Symfony2'),
-		array('id' => 5, 'title' => 'Webmaster'),
-		array('id' => 9, 'title' => 'Webdesigner')
-	  );
+  public function menuAction($limit = 3){
+
+      $listAdverts = $this->getDoctrine()->getManager()->getRepository('OCPlatformBundle:Advert')->findBy(
+          array(),
+          array('date' => 'desc'),
+          $limit,
+          0
+      );
 	  
 	  return $this->render('OCPlatformBundle:Advert:menu.html.twig', array('listAdverts' => $listAdverts));
 	  

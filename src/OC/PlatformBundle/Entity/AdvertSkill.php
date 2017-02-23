@@ -38,7 +38,7 @@ class AdvertSkill
      * @ORM\ManyToOne(targetEntity="OC\PlatformBundle\Entity\Skill")
      * @ORM\JoinColumn(nullable=false)
      */
-    private $Skill;
+    private $skill;
 
 
     /**
@@ -108,7 +108,7 @@ class AdvertSkill
      */
     public function setSkill(\OC\PlatformBundle\Entity\Skill $skill)
     {
-        $this->Skill = $skill;
+        $this->skill = $skill;
 
         return $this;
     }
@@ -120,6 +120,8 @@ class AdvertSkill
      */
     public function getSkill()
     {
-        return $this->Skill;
+        return $this->skill;
     }
+
+
 }
