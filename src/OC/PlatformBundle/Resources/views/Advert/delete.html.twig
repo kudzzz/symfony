@@ -9,17 +9,22 @@
 
     <h2>Supprimer une annonce</h2>
 
-    {{ include("OCPlatformBundle:Advert:form.html.twig") }}
 
     <p>
-        Supprimer la categorie pour l'instant
+        Supprimer l'annonce "{{ advert.title }}"
     </p>
 
-    <p>
+    <form action="{{ path('oc_platform_delete', {'id': advert.id}) }}" method="post">
         <a href="{{ path('oc_platform_view', {'id': advert.id}) }}" class="btn btn-default">
             <i class="glyphicon glyphicon-chevron-left"></i>
-            Retour à l'annonce
+            Retour a l'annonce
+
         </a>
-    </p>
+
+        <input type="submit" value="Supprimer" class="btn btn-danger" />
+
+        {{ form_rest(form) }}
+
+    </form>
 
 {% endblock %}

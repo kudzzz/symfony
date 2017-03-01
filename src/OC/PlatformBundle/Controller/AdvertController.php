@@ -8,6 +8,8 @@ use OC\PlatformBundle\Entity\Advert;
 use OC\PlatformBundle\Entity\AdvertSkill;
 use OC\PlatformBundle\Entity\Application;
 use OC\PlatformBundle\Entity\Image;
+use OC\PlatformBundle\Form\AdvertEditType;
+use OC\PlatformBundle\Form\AdvertType;
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -81,22 +83,17 @@ class AdvertController extends Controller
   public function addAction(Request $request)
   {
       $advert = new Advert();
-      $form = $this->get('form.factory')->createBuilder('form', $advert)
-          ->add('date','date')
-          ->add('title','text')
-          ->add('content', 'textarea')
-          ->add('author', 'text')
-          ->add('published', 'checkbox', array('required' => false))
-          ->add('save', 'submit')
-          ->getForm();
+      $form = $this->createForm(new AdvertType(), $advert);
 
       $form->handleRequest($request);
 
       if($form->isValid()){
-          $em = $this->getDoctrine()
-              ->getManager();
+
+          $em = $this->getDoctrine()->getManager();
           $em->persist($advert);
+          $em->persist($advert->getImage());
           $em->flush();
+
           $request->getSession()->getFlashBag()->add('notice', 'Annonce bien enregistree.');
 
           return $this->redirect($this->generateUrl('oc_platform_view', array('id' => $advert->getId())));
@@ -128,7 +125,25 @@ class AdvertController extends Controller
           throw new NotFoundHttpException("L'annonce d'id ".$id. " n'existe pas.");
       }
 
-	return $this->render('OCPlatformBundle:Advert:edit.html.twig', array('advert' => $advert));
+      $form = $this->createForm(new AdvertEditType(), $advert);
+
+      $form->handleRequest($request);
+
+      if($form->isValid()){
+
+          $em->flush();
+
+          return $this->redirect($this->generateUrl('oc_platform_view', array('id' => $advert->getId())));
+
+
+      }
+
+      return $this->render('OCPlatformBundle:Advert:edit.html.twig', array(
+          'form' => $form->createView(),
+          'advert' => $advert
+      ));
+
+
   }
 
   public function deleteAction($id, Request $request)
@@ -141,13 +156,20 @@ class AdvertController extends Controller
           throw new NotFoundHttpException("L'annonce d'id ".$id." n'existe pas");
       }
 
-      if ($request->isMethod('POST')){
+      $form = $this->createFormBuilder()->getForm();
+
+      if ($form->handleRequest($request)->isValid()){
+
+          $em->remove($advert);
+          $em->flush();
+
           $request->getSession()->getFlashBag()->add('info', 'Annonce bien supprimee.');
 
-          return $this->redirect($this->generateUrl('oc_platform_view'));
+          return $this->redirect($this->generateUrl('oc_platform_home'));
       }
 
-    return $this->render('OCPlatformBundle:Advert:delete.html.twig', array('advert' => $advert));
+    return $this->render('OCPlatformBundle:Advert:delete.html.twig', array('advert' => $advert,
+        'form' => $form->createView()));
   }
   
   public function menuAction($limit = 3){
